@@ -1,0 +1,59 @@
+{
+  "name": "disfraz",
+  "productName": "Disfraz",
+  "version": "0.1.0",
+  "description": "Anonimiza documentos en local antes de usar una IA y restaura los datos reales después",
+  "main": "src/main/main.js",
+  "author": "syslinsh <syslinsh@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.1",
+    "@napi-rs/canvas": "^1.0.13",
+    "@tesseract.js-data/spa": "^1.0.0",
+    "docx": "^9.0.0",
+    "exceljs": "^4.4.0",
+    "mammoth": "^1.8.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.disfraz.desktop",
+    "productName": "Disfraz",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asar": false
+  }
+}

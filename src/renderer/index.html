@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'self'; script-src 'self'">
+<title>Disfraz</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">▮▮</span> Disfraz <small>100 % local · nada sale de tu equipo</small></div>
+  <nav>
+    <button data-tab="anon" class="on">1 · Anonimizar</button>
+    <button data-tab="rest">2 · Restaurar</button>
+    <button data-tab="files">Archivos</button>
+    <button data-tab="cfg">Ajustes y sesión <span id="sessBadge" class="badge">0</span></button>
+  </nav>
+</header>
+
+<main>
+<section id="tab-anon" class="tab on">
+  <div class="cols">
+    <div class="col">
+      <label>Texto original</label>
+      <textarea id="inText" placeholder="Pega aquí el texto con datos personales…"></textarea>
+      <div class="row">
+        <button id="btnPasteIn">Pegar</button>
+        <button id="btnDetect" class="primary">Detectar</button>
+        <span id="detInfo" class="muted"></span>
+      </div>
+      <div id="detList" class="detlist"></div>
+    </div>
+    <div class="col">
+      <label>Texto anonimizado (listo para la IA)</label>
+      <textarea id="outText" readonly></textarea>
+      <div class="row">
+        <button id="btnApply" class="primary">Aplicar selección</button>
+        <button id="btnCopyOut">Copiar</button>
+        <select id="mode" title="Modo de anonimización">
+          <option value="marcadores">Marcadores [DNI_1] (reversible)</option>
+          <option value="realista">Datos falsos realistas (reversible)</option>
+          <option value="irreversible">Irreversible [DNI] (sin restaurar)</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="chkInstr" checked> Añadir instrucción para la IA</label>
+      </div>
+      <div id="leakBox" class="notice hidden"></div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-rest" class="tab">
+  <div class="cols">
+    <div class="col">
+      <label>Respuesta de la IA (con marcadores)</label>
+      <textarea id="aiText" placeholder="Pega aquí la respuesta de la IA…"></textarea>
+      <div class="row">
+        <button id="btnPasteAi">Pegar</button>
+        <button id="btnRestore" class="primary">Restaurar datos reales</button>
+      </div>
+    </div>
+    <div class="col">
+      <label>Resultado con datos reales</label>
+      <textarea id="restText" readonly></textarea>
+      <div class="row"><button id="btnCopyRest">Copiar</button><span id="restInfo" class="muted"></span></div>
+      <div id="restWarn" class="notice hidden"></div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-files" class="tab">
+  <div id="drop" class="drop">Arrastra aquí archivos o carpetas<br><small>.txt .md .csv .json .docx .xlsx .pdf .png .jpg · se crea una copia «.anonimo» junto al original</small></div>
+  <div class="row center">
+    <button id="btnFiles">Elegir archivos…</button>
+    <button id="btnFolder">Elegir carpeta…</button>
+    <select id="pdfMode" title="Cómo salen los PDF">
+      <option value="tachar">PDF: tachar con cajas negras (OCR si es escaneado)</option>
+      <option value="sustituir">PDF: sustituir por marcadores o datos falsos (según el modo)</option>
+      <option value="texto">PDF: extraer texto a .docx</option>
+    </select>
+    <button id="btnRun" class="primary" disabled>Anonimizar lote</button>
+    <button id="btnRestoreFiles" title="Restaura los datos reales en archivos devueltos por la IA">Restaurar archivos…</button>
+    <button id="btnAudit" title="Informe sin datos personales: huellas y recuentos">Informe de auditoría…</button>
+    <span id="fileInfo" class="muted"></span>
+  </div>
+  <table id="fileTable"><thead><tr><th>Archivo</th><th>Datos</th><th>Estado</th></tr></thead><tbody></tbody></table>
+</section>
+
+<section id="tab-cfg" class="tab">
+  <div class="cols">
+    <div class="col">
+      <label>Perfil</label>
+      <select id="profile"></select>
+      <label>Qué detectar</label>
+      <div id="typeList" class="typelist"></div>
+      <label>Términos personalizados <small>(uno por línea · «término» o «término = TIPO»)</small></label>
+      <textarea id="customTerms" class="short" placeholder="Proyecto Fénix = PROYECTO"></textarea>
+    </div>
+    <div class="col">
+      <label>Sesión actual <small>(mismo dato → mismo marcador)</small></label>
+      <div class="row">
+        <button id="btnReveal">Mostrar valores</button>
+        <button id="btnReset" class="danger">Nueva sesión</button>
+      </div>
+      <div class="sessbox"><table id="sessTable"><tbody></tbody></table></div>
+      <label>Expediente cifrado <small>(sesión + términos + tipos activos)</small></label>
+      <div class="row">
+        <input id="pwd" type="password" placeholder="Contraseña">
+        <button id="btnSave">Guardar…</button>
+        <button id="btnLoad">Cargar…</button>
+      </div>
+      <div id="cfgMsg" class="muted"></div>
+      <label>Nombres con modelo local <small>(opcional · sin internet al usarlo)</small></label>
+      <div class="row">
+        <label class="chk off"><input type="checkbox" id="chkNer" disabled> Detectar nombres con el modelo</label>
+        <button id="btnNer">Descargar modelo…</button>
+        <button id="btnNerDel" class="hidden">Borrar modelo</button>
+      </div>
+      <div id="nerMsg" class="muted">Encuentra nombres sueltos («José Ramirez») que las reglas no ven. Se descarga una vez (~180 MB) y funciona en tu equipo, sin enviar nada.</div>
+    </div>
+  </div>
+</section>
+</main>
+<div id="review" class="review hidden">
+  <div class="rv-bar">
+    <b id="rvTitle"></b>
+    <span class="muted">Clic en una caja = quitarla/ponerla · arrastra sobre la página = tapar algo que no se detectó</span>
+    <label class="chk"><input type="checkbox" id="rvAll" checked> Tapar también todas las apariciones de lo que marque</label>
+    <button id="rvClear">Borrar mis cajas</button>
+    <button id="rvOk" class="primary">Guardar revisión</button>
+    <button id="rvCancel">Cancelar</button>
+  </div>
+  <div id="rvPages" class="rv-pages"></div>
+</div>
+<div id="rvList" class="review hidden">
+  <div class="rv-bar">
+    <b id="rlTitle"></b>
+    <span class="muted">Desmarca lo que NO quieras anonimizar</span>
+    <button id="rlOk" class="primary">Guardar revisión</button>
+    <button id="rlCancel">Cancelar</button>
+  </div>
+  <div id="rlItems" class="rv-pages rl-items"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

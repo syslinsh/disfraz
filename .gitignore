@@ -1,0 +1,8 @@
+.env
+*.log
+__pycache__/
+*.py[cod]
+node_modules/
+dist/
+*.db
+*.sqlite*
