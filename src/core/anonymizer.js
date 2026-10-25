@@ -133,15 +133,24 @@ function detect(text, opts = {}) {
 
 /** Aplica las coincidencias (ya filtradas por el usuario) y devuelve el texto anonimizado. */
 function apply(text, matches, session) {
+  return segments(text, matches, session)
+    .map((s) => s.t)
+    .join('');
+}
+
+/** Igual que apply, pero devuelve trozos: [{t}] texto sin tocar, [{t, type, value}] dato sustituido (para resaltarlo en pantalla). */
+function segments(text, matches, session) {
   const sorted = [...matches].sort((a, b) => a.start - b.start);
-  let out = '';
+  const out = [];
   let pos = 0;
   for (const m of sorted) {
     if (m.start < pos) continue;
-    out += text.slice(pos, m.start) + session.placeholderFor(m.type, m.value);
+    if (m.start > pos) out.push({ t: text.slice(pos, m.start) });
+    out.push({ t: session.placeholderFor(m.type, m.value), type: m.type, value: m.value });
     pos = m.end;
   }
-  return out + text.slice(pos);
+  if (pos < text.length) out.push({ t: text.slice(pos) });
+  return out;
 }
 
 function anonymize(text, session, opts) {
@@ -202,4 +211,4 @@ function summarize(matches) {
   return counts;
 }
 
-module.exports = { Session, detect, apply, anonymize, restore, leakCheck, leakCheckValues, summarize, normKey };
+module.exports = { Session, detect, apply, segments, anonymize, restore, leakCheck, leakCheckValues, summarize, normKey };

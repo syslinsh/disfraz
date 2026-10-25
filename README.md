@@ -37,6 +37,7 @@ DNI/NIE (con letra validada), CIF (dígito de control), IBAN (mod 97), tarjetas 
 - **Revisar antes de aplicar** en todos los formatos (txt, csv, docx, xlsx…): lista de valores detectados; desmarca los que no quieras tocar.
 - **Perfiles** (laboral, legal, sanitario, financiero) que activan los tipos adecuados; nuevos tipos NSS y nº de expediente/autos/historia clínica/factura.
 - **Informe de auditoría** (`.md` + `.json`): fecha, huella SHA-256 del original, modo y recuentos por tipo; nunca incluye datos reales.
+- **Interfaz renovada**: tema claro/oscuro (sigue al sistema, botón para cambiar), vista «antes y después» con los datos resaltados por color según su tipo (clic en el original = incluir/dejar sin tocar; ratón sobre un dato del resultado = ver el real), tabla de resultados con progreso por archivo, resumen por tipo, aviso al copiar y atajo `Ctrl+Intro`.
 - Interfaz sin red: CSP estricta, sin `nodeIntegration`, sin ninguna llamada de red.
 
 ## Usar
@@ -45,7 +46,7 @@ DNI/NIE (con letra validada), CIF (dígito de control), IBAN (mod 97), tarjetas 
 npm install
 npm start        # ejecutar
 npm test         # 29 pruebas
-npm run dist     # instalador en dist\Disfraz Setup 0.1.0.exe
+npm run dist     # instalador en dist\Disfraz Setup 0.2.0.exe
 ```
 
 Instalador sin firmar: SmartScreen puede avisar («Más información → Ejecutar de todas formas»).

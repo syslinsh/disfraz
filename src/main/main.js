@@ -2,7 +2,7 @@
 const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, safeStorage } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const { Session, detect, apply, restore, leakCheckValues, summarize } = require('../core/anonymizer');
+const { Session, detect, apply, segments, restore, leakCheckValues, summarize } = require('../core/anonymizer');
 const { TYPES } = require('../core/detectors');
 const { listDetections, scanPdfHidden, processFile, restoreFile, listFolder, isSupported, SUPPORTED } = require('../core/files');
 const { closeOcr, analyzePdf } = require('../core/redact');
@@ -42,7 +42,8 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Disfraz',
-    backgroundColor: '#0f1419',
+    backgroundColor: '#0e1218',
+    icon: path.join(__dirname, '..', 'renderer', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -111,10 +112,11 @@ ipcMain.handle('mode:set', (_e, mode) => {
 });
 
 ipcMain.handle('apply', (_e, text, matches) => {
-  const out = apply(text, matches, session);
+  const segs = segments(text, matches, session);
+  const out = segs.map((s) => s.t).join('');
   audit.addText(text, matches, session.mode);
   persistSession();
-  return { text: out, leaks: leakCheckValues(out, matches), session: sessionInfo() };
+  return { text: out, segs, leaks: leakCheckValues(out, matches), session: sessionInfo() };
 });
 
 ipcMain.handle('restore', (_e, text) => restore(text, session));

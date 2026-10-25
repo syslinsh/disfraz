@@ -13,6 +13,45 @@ const INSTR_REAL =
 const instr = () => ($('mode').value === 'realista' ? INSTR_REAL : INSTR);
 let lastSession = { size: 0, items: [] };
 
+// ---- Aspecto: tema claro/oscuro, colores por tipo, avisos
+const hues = {};
+const hashHue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const hueOf = (s) => (s in hues ? hues[s] : hashHue(s));
+const tint = (el, key) => (el.style.setProperty('--h', hueOf(key)), el);
+function mk(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function theme(t) {
+  document.documentElement.dataset.theme = t;
+  try {
+    localStorage.setItem('theme', t);
+  } catch {
+    /* sin almacenamiento: se queda en el tema del sistema */
+  }
+}
+try {
+  const t = localStorage.getItem('theme');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+} catch {
+  /* idem */
+}
+$('btnTheme').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches;
+  theme(dark ? 'light' : 'dark');
+};
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 1800);
+}
+const extOf = (f) => (f.match(/\.([a-z0-9]+)$/i) || [, '?'])[1].toLowerCase();
+
 document.querySelectorAll('nav button').forEach((b) =>
   b.addEventListener('click', () => {
     document.querySelectorAll('nav button,.tab').forEach((e) => e.classList.remove('on'));
@@ -40,7 +79,7 @@ const sigOf = (o) => JSON.stringify({ e: o.enabled, c: o.custom, n: !!o.ner });
 const reviews = {};
 function pendingCell(f) {
   const c = document.createElement('td');
-  c.append('Pendiente');
+  c.append(mk('span', 'state', 'Pendiente'));
   if (/\.pdf$/i.test(f) || !/\.(png|jpe?g)$/i.test(f)) {
     const pdf = /\.pdf$/i.test(f);
     const a = document.createElement('a');
@@ -72,9 +111,7 @@ async function openList(file, link) {
       cb.checked = !off.has(it.key);
       cb.disabled = !it.key;
       cb.onchange = () => (cb.checked ? off.delete(it.key) : off.add(it.key));
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = it.type;
+      const tag = tint(mk('span', 'tag', it.type), it.type);
       const v = document.createElement('span');
       v.className = 'v';
       v.textContent = it.value + (it.count > 1 ? ` (×${it.count})` : '');
@@ -217,37 +254,97 @@ function renderSession(s) {
 }
 
 // ---- Anonimizar
-$('btnPasteIn').onclick = async () => ($('inText').value = await api.paste());
+function showInput(on) {
+  $('inView').classList.toggle('hidden', !on);
+  $('inText').classList.toggle('hidden', on);
+  $('btnEdit').classList.toggle('hidden', !on);
+}
+function showOutput(on) {
+  $('outView').classList.toggle('hidden', !on);
+  $('outText').classList.toggle('hidden', on);
+  $('outHint').classList.toggle('hidden', !on);
+}
+// original con los datos detectados resaltados por tipo; clic = incluir/excluir
+const checks = new Map();
+function renderInput() {
+  const text = $('inText').value;
+  const parts = [];
+  let pos = 0;
+  for (const m of matches) {
+    if (m.start < pos) continue;
+    if (m.start > pos) parts.push(text.slice(pos, m.start));
+    const s = tint(mk('span', 'hl' + (included.has(m.id) ? '' : ' off'), text.slice(m.start, m.end)), m.type);
+    s.title = m.type + ' · clic para ' + (included.has(m.id) ? 'dejarlo sin tocar' : 'incluirlo');
+    s.onclick = () => {
+      included.has(m.id) ? included.delete(m.id) : included.add(m.id);
+      checks.get(m.id).checked = included.has(m.id);
+      renderInput();
+    };
+    parts.push(s);
+    pos = m.end;
+  }
+  parts.push(text.slice(pos));
+  $('inView').replaceChildren(...parts);
+}
+function renderChips() {
+  const by = {};
+  matches.forEach((m) => (by[m.type] = (by[m.type] || 0) + 1));
+  $('sumChips').replaceChildren(
+    ...Object.entries(by).map(([t, n]) => {
+      const c = tint(mk('span', 'chip'), t);
+      c.append(mk('b', null, n), t);
+      return c;
+    })
+  );
+}
+$('btnPasteIn').onclick = async () => {
+  showInput(false);
+  $('inText').value = await api.paste();
+};
+$('btnEdit').onclick = () => (showInput(false), $('inText').focus());
 $('btnDetect').onclick = async () => {
   const r = await api.detect($('inText').value, opts());
   if (r.error) return ($('detInfo').textContent = r.error);
   matches = r.matches;
   included = new Set(matches.map((m) => m.id));
+  checks.clear();
   $('detList').replaceChildren(
     ...matches.map((m) => {
-      const d = document.createElement('div');
-      d.className = 'det';
+      const d = mk('div', 'det');
       const c = document.createElement('input');
       c.type = 'checkbox';
       c.checked = true;
-      c.onchange = () => (c.checked ? included.add(m.id) : included.delete(m.id));
-      const t = document.createElement('span');
-      t.className = 'tag';
-      t.textContent = m.type;
-      const v = document.createElement('span');
-      v.className = 'v';
-      v.textContent = m.value;
-      d.append(c, t, v);
+      checks.set(m.id, c);
+      c.onchange = () => ((c.checked ? included.add(m.id) : included.delete(m.id)), renderInput());
+      d.append(c, tint(mk('span', 'tag', m.type), m.type), mk('span', 'v', m.value));
       return d;
     })
   );
+  renderChips();
   $('detInfo').textContent = matches.length ? `${matches.length} datos detectados` : 'No se detectó nada';
-  if (matches.length) $('btnApply').click();
+  showInput(matches.length > 0);
+  if (matches.length) {
+    renderInput();
+    $('btnApply').click();
+  }
 };
 $('btnApply').onclick = async () => {
   const sel = matches.filter((m) => included.has(m.id));
   const r = await api.apply($('inText').value, sel);
-  $('outText').value = (sel.length && $('chkInstr').checked && $('mode').value !== 'irreversible' ? instr() : '') + r.text;
+  const pre = sel.length && $('chkInstr').checked && $('mode').value !== 'irreversible' ? instr() : '';
+  $('outText').value = pre + r.text;
+  const parts = [];
+  if (pre) parts.push(mk('span', 'pre', pre.replace(/\n\n---\n$/, '')));
+  for (const s of r.segs) {
+    if (!s.type) parts.push(s.t);
+    else {
+      const e = tint(mk('span', 'hl out', s.t), s.type);
+      e.dataset.real = s.type + ': ' + s.value;
+      parts.push(e);
+    }
+  }
+  $('outView').replaceChildren(...parts);
+  showOutput(true);
   renderSession(r.session);
   const lb = $('leakBox');
   if (r.leaks.length) {
@@ -259,7 +356,15 @@ $('btnApply').onclick = async () => {
   }
 };
 $('mode').onchange = async () => renderSession(await api.setMode($('mode').value));
-$('btnCopyOut').onclick = () => api.copy($('outText').value);
+$('btnCopyOut').onclick = () => ($('outText').value ? (api.copy($('outText').value), toast('Copiado ✓')) : toast('Todavía no hay nada que copiar'));
+$('inText').addEventListener('input', () => showInput(false));
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey && e.key === 'Enter')) return;
+  const tab = document.querySelector('.tab.on').id;
+  if (tab === 'tab-anon') $('btnDetect').click();
+  else if (tab === 'tab-rest') $('btnRestore').click();
+  else if (tab === 'tab-files' && !$('btnRun').disabled) $('btnRun').click();
+});
 
 // ---- Restaurar
 $('btnPasteAi').onclick = async () => ($('aiText').value = await api.paste());
@@ -273,7 +378,7 @@ $('btnRestore').onclick = async () => {
     w.textContent = 'Marcadores que no están en esta sesión (¿inventados por la IA o de otra sesión?): ' + r.unknown.join(' ');
   } else w.className = 'notice hidden';
 };
-$('btnCopyRest').onclick = () => api.copy($('restText').value);
+$('btnCopyRest').onclick = () => ($('restText').value ? (api.copy($('restText').value), toast('Copiado ✓')) : toast('Todavía no hay nada que copiar'));
 
 // ---- Archivos
 function setPending(files) {
@@ -283,16 +388,30 @@ function setPending(files) {
       const tr = document.createElement('tr');
       tr.dataset.f = f;
       const a = document.createElement('td');
-      a.textContent = f;
+      const name = f.split(/[\\/]/).pop();
+      const fc = mk('div', 'fcell');
+      const fn = mk('div', 'fname');
+      fn.append(mk('b', null, name), mk('small', null, f.slice(0, f.length - name.length)));
+      fn.title = f;
+      fc.append(tint(mk('span', 'fext', extOf(f).toUpperCase()), extOf(f)), fn);
+      a.append(fc);
       const b = document.createElement('td');
+      b.textContent = '—';
       const c = pendingCell(f);
       tr.append(a, b, c);
       return tr;
     })
   );
   $('btnRun').disabled = !pending.length;
-  $('fileInfo').textContent = `${pending.length} archivos`;
+  $('fileEmpty').classList.toggle('hidden', pending.length > 0);
+  $('progWrap').classList.add('hidden');
+  $('fileInfo').textContent = pending.length ? `${pending.length} archivo${pending.length > 1 ? 's' : ''} listo${pending.length > 1 ? 's' : ''} para anonimizar` : '';
 }
+const setState = (tr, cls, text) => {
+  const s = mk('span', 'state ' + cls, text);
+  tr.children[2].replaceChildren(s);
+  return s;
+};
 $('btnFiles').onclick = async () => setPending(await api.pickFiles());
 $('btnFolder').onclick = async () => setPending(await api.pickFolder());
 const drop = $('drop');
@@ -314,23 +433,52 @@ $('btnRun').onclick = async () => {
   o.reviews = usable;
   o.skips = {};
   for (const [f, s] of Object.entries(skips)) if (pending.includes(f) && s.sig === sigOf(o)) o.skips[f] = s.keys;
-  const r = await api.runFiles(pending, o);
-  for (const x of r.results) {
-    const tr = [...document.querySelectorAll('#fileTable tbody tr')].find((t) => t.dataset.f === x.file);
+  const rows = [...document.querySelectorAll('#fileTable tbody tr')];
+  const files = [...pending];
+  $('progWrap').classList.remove('hidden');
+  $('progBar').style.width = '0%';
+  let done = 0;
+  let total = 0;
+  let last;
+  for (const f of files) {
+    const tr = rows.find((t) => t.dataset.f === f);
+    if (tr) setState(tr, 'run', 'Procesando…');
+    $('fileInfo').textContent = `Procesando ${done + 1} de ${files.length}…`;
+    const r = await api.runFiles([f], o);
+    last = r.session;
+    const x = r.results[0];
+    done++;
+    $('progBar').style.width = Math.round((done / files.length) * 100) + '%';
     if (!tr) continue;
-    tr.children[1].textContent = x.error ? '—' : `${x.total} (${Object.entries(x.counts).map(([k, v]) => k + ' ' + v).join(', ')})`;
-    const hid = x.hidden && x.hidden.length ? ` ⚠ ${x.hidden.length} texto(s) oculto(s) en el PDF: «${x.hidden[0].text.slice(0, 50)}»` : '';
-    if (x.error) tr.children[2].textContent = 'Error: ' + x.error;
-    else {
-      const a = document.createElement('a');
-      a.textContent = 'Ver copia';
-      a.onclick = () => api.reveal(x.dest);
-      const warn = [...(x.warn || []), ...(x.residues && x.residues.length ? ['Posibles restos en: ' + x.residues.join(', ')] : [])];
-      tr.children[2].replaceChildren('✓ ', a, hid, warn.length ? ' ⚠ ' + warn.slice(0, 3).join(' · ') : '');
+    if (x.error) {
+      tr.children[1].textContent = '—';
+      setState(tr, 'bad', 'Error').title = x.error;
+      tr.children[2].append(mk('span', 'sub w', x.error));
+      continue;
     }
+    total += x.total || 0;
+    const cs = mk('div', 'counts');
+    for (const [k, v] of Object.entries(x.counts || {})) {
+      const c = tint(mk('span', 'chip'), k);
+      c.append(mk('b', null, v), k);
+      cs.append(c);
+    }
+    tr.children[1].replaceChildren(x.total ? cs : mk('span', 'muted', 'Nada que tapar'));
+    const warn = [
+      ...(x.hidden && x.hidden.length ? [`${x.hidden.length} texto(s) oculto(s) en el PDF: «${x.hidden[0].text.slice(0, 50)}»`] : []),
+      ...(x.warn || []),
+      ...(x.residues && x.residues.length ? ['Posibles restos en: ' + x.residues.join(', ')] : [])
+    ];
+    const a = document.createElement('a');
+    a.textContent = 'Ver copia';
+    a.onclick = () => api.reveal(x.dest);
+    const td = tr.children[2];
+    td.replaceChildren(mk('span', 'state ' + (warn.length ? 'warn' : 'ok'), warn.length ? '⚠ Revisar' : '✓ Hecho'), ' ', a);
+    warn.slice(0, 3).forEach((w) => td.append(mk('span', 'sub w', w)));
   }
-  renderSession(r.session);
-  $('fileInfo').textContent = 'Listo. Originales intactos.';
+  if (last) renderSession(last);
+  $('fileInfo').textContent = `Listo: ${total} datos tapados en ${files.length} archivo${files.length > 1 ? 's' : ''}. Originales intactos.`;
+  toast('Lote terminado ✓');
 };
 
 $('btnRestoreFiles').onclick = async () => {
@@ -402,6 +550,7 @@ $('btnNerDel').onclick = async () => {
   const pr = await api.profiles();
   $('profile').replaceChildren(...pr.list.map((p) => Object.assign(document.createElement('option'), { value: p.id, textContent: p.label })));
   const types = pr.types;
+  [...new Set(types.map((t) => t.type))].forEach((t, i) => (hues[t] = Math.round((150 + i * 137.5) % 360)));
   $('typeList').replaceChildren(
     ...types.map((t) => {
       const l = document.createElement('label');

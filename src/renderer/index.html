@@ -2,40 +2,57 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="dark light">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'self'; script-src 'self'">
 <title>Disfraz</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header>
-  <div class="brand"><span class="logo">▮▮</span> Disfraz <small>100 % local · nada sale de tu equipo</small></div>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#0ea5a4"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#lg)"/><rect x="13" y="16" width="38" height="8" rx="4" fill="#fff"/><rect x="13" y="28" width="26" height="8" rx="4" fill="#fff" fill-opacity=".9"/><rect x="13" y="40" width="32" height="8" rx="4" fill="#fff" fill-opacity=".45"/><circle cx="48" cy="44" r="4" fill="#fff"/></svg>
+    <div class="brand-t"><b>Disfraz</b><small>100 % local · nada sale de tu equipo</small></div>
+  </div>
   <nav>
-    <button data-tab="anon" class="on">1 · Anonimizar</button>
-    <button data-tab="rest">2 · Restaurar</button>
+    <button data-tab="anon" class="on">Anonimizar</button>
+    <button data-tab="rest">Restaurar</button>
     <button data-tab="files">Archivos</button>
-    <button data-tab="cfg">Ajustes y sesión <span id="sessBadge" class="badge">0</span></button>
+    <button data-tab="cfg">Ajustes <span id="sessBadge" class="badge" title="Datos guardados en la sesión">0</span></button>
   </nav>
+  <button id="btnTheme" class="ghost icon-btn" title="Cambiar entre tema claro y oscuro" aria-label="Cambiar tema">
+    <svg viewBox="0 0 24 24" class="ico"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
 </header>
 
 <main>
 <section id="tab-anon" class="tab on">
   <div class="cols">
-    <div class="col">
-      <label>Texto original</label>
+    <div class="col card">
+      <div class="card-h">
+        <label>Texto original</label>
+        <span class="spacer"></span>
+        <button id="btnEdit" class="ghost small hidden">Editar texto</button>
+        <button id="btnPasteIn" class="small">Pegar</button>
+      </div>
       <textarea id="inText" placeholder="Pega aquí el texto con datos personales…"></textarea>
+      <div id="inView" class="view hidden" tabindex="0"></div>
       <div class="row">
-        <button id="btnPasteIn">Pegar</button>
-        <button id="btnDetect" class="primary">Detectar</button>
+        <button id="btnDetect" class="primary">Detectar datos <kbd>Ctrl+Intro</kbd></button>
         <span id="detInfo" class="muted"></span>
       </div>
+      <div id="sumChips" class="chips"></div>
       <div id="detList" class="detlist"></div>
     </div>
-    <div class="col">
-      <label>Texto anonimizado (listo para la IA)</label>
-      <textarea id="outText" readonly></textarea>
+    <div class="col card">
+      <div class="card-h">
+        <label>Anonimizado <small>(listo para la IA)</small></label>
+        <span class="spacer"></span>
+        <button id="btnCopyOut" class="small">Copiar</button>
+      </div>
+      <textarea id="outText" readonly placeholder="Aquí aparecerá el texto sin datos personales."></textarea>
+      <div id="outView" class="view hidden" tabindex="0"></div>
       <div class="row">
         <button id="btnApply" class="primary">Aplicar selección</button>
-        <button id="btnCopyOut">Copiar</button>
         <select id="mode" title="Modo de anonimización">
           <option value="marcadores">Marcadores [DNI_1] (reversible)</option>
           <option value="realista">Datos falsos realistas (reversible)</option>
@@ -44,82 +61,114 @@
         <label class="chk"><input type="checkbox" id="chkInstr" checked> Añadir instrucción para la IA</label>
       </div>
       <div id="leakBox" class="notice hidden"></div>
+      <div id="outHint" class="muted">Pasa el ratón sobre un dato resaltado para ver el real.</div>
     </div>
   </div>
 </section>
 
 <section id="tab-rest" class="tab">
   <div class="cols">
-    <div class="col">
-      <label>Respuesta de la IA (con marcadores)</label>
+    <div class="col card">
+      <div class="card-h">
+        <label>Respuesta de la IA <small>(con marcadores)</small></label>
+        <span class="spacer"></span>
+        <button id="btnPasteAi" class="small">Pegar</button>
+      </div>
       <textarea id="aiText" placeholder="Pega aquí la respuesta de la IA…"></textarea>
       <div class="row">
-        <button id="btnPasteAi">Pegar</button>
-        <button id="btnRestore" class="primary">Restaurar datos reales</button>
+        <button id="btnRestore" class="primary">Restaurar datos reales <kbd>Ctrl+Intro</kbd></button>
       </div>
     </div>
-    <div class="col">
-      <label>Resultado con datos reales</label>
+    <div class="col card">
+      <div class="card-h">
+        <label>Resultado con datos reales</label>
+        <span class="spacer"></span>
+        <button id="btnCopyRest" class="small">Copiar</button>
+      </div>
       <textarea id="restText" readonly></textarea>
-      <div class="row"><button id="btnCopyRest">Copiar</button><span id="restInfo" class="muted"></span></div>
+      <div class="row"><span id="restInfo" class="muted"></span></div>
       <div id="restWarn" class="notice hidden"></div>
     </div>
   </div>
 </section>
 
 <section id="tab-files" class="tab">
-  <div id="drop" class="drop">Arrastra aquí archivos o carpetas<br><small>.txt .md .csv .json .docx .xlsx .pdf .png .jpg · se crea una copia «.anonimo» junto al original</small></div>
-  <div class="row center">
-    <button id="btnFiles">Elegir archivos…</button>
-    <button id="btnFolder">Elegir carpeta…</button>
+  <div id="drop" class="drop">
+    <svg viewBox="0 0 24 24" class="drop-ico"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+    <div class="drop-t">Arrastra aquí archivos o carpetas</div>
+    <div class="drop-s">.txt .md .csv .json .docx .xlsx .pdf .png .jpg · se crea una copia «.anonimo» junto al original</div>
+    <div class="row center">
+      <button id="btnFiles" class="primary">Elegir archivos…</button>
+      <button id="btnFolder">Elegir carpeta…</button>
+    </div>
+  </div>
+  <div class="toolbar">
     <select id="pdfMode" title="Cómo salen los PDF">
       <option value="tachar">PDF: tachar con cajas negras (OCR si es escaneado)</option>
       <option value="sustituir">PDF: sustituir por marcadores o datos falsos (según el modo)</option>
       <option value="texto">PDF: extraer texto a .docx</option>
     </select>
+    <span class="spacer"></span>
+    <button id="btnRestoreFiles" class="ghost" title="Restaura los datos reales en archivos devueltos por la IA">Restaurar archivos…</button>
+    <button id="btnAudit" class="ghost" title="Informe sin datos personales: huellas y recuentos">Informe de auditoría…</button>
     <button id="btnRun" class="primary" disabled>Anonimizar lote</button>
-    <button id="btnRestoreFiles" title="Restaura los datos reales en archivos devueltos por la IA">Restaurar archivos…</button>
-    <button id="btnAudit" title="Informe sin datos personales: huellas y recuentos">Informe de auditoría…</button>
-    <span id="fileInfo" class="muted"></span>
   </div>
-  <table id="fileTable"><thead><tr><th>Archivo</th><th>Datos</th><th>Estado</th></tr></thead><tbody></tbody></table>
+  <div id="progWrap" class="prog hidden"><div id="progBar" class="prog-bar"></div></div>
+  <div id="fileInfo" class="muted file-info"></div>
+  <div class="card tbl">
+    <table id="fileTable"><thead><tr><th>Archivo</th><th>Datos</th><th>Estado</th></tr></thead><tbody></tbody></table>
+    <div id="fileEmpty" class="empty">Todavía no hay archivos. Suelta algunos arriba.</div>
+  </div>
 </section>
 
 <section id="tab-cfg" class="tab">
   <div class="cols">
     <div class="col">
-      <label>Perfil</label>
-      <select id="profile"></select>
-      <label>Qué detectar</label>
-      <div id="typeList" class="typelist"></div>
-      <label>Términos personalizados <small>(uno por línea · «término» o «término = TIPO»)</small></label>
-      <textarea id="customTerms" class="short" placeholder="Proyecto Fénix = PROYECTO"></textarea>
+      <div class="card">
+        <div class="card-h"><label>Perfil</label></div>
+        <select id="profile"></select>
+        <div class="card-h"><label>Qué detectar</label></div>
+        <div id="typeList" class="typelist"></div>
+      </div>
+      <div class="card grow">
+        <div class="card-h"><label>Términos personalizados <small>(uno por línea · «término» o «término = TIPO»)</small></label></div>
+        <textarea id="customTerms" class="short" placeholder="Proyecto Fénix = PROYECTO"></textarea>
+      </div>
     </div>
     <div class="col">
-      <label>Sesión actual <small>(mismo dato → mismo marcador)</small></label>
-      <div class="row">
-        <button id="btnReveal">Mostrar valores</button>
-        <button id="btnReset" class="danger">Nueva sesión</button>
+      <div class="card">
+        <div class="card-h">
+          <label>Sesión actual <small>(mismo dato → mismo marcador)</small></label>
+          <span class="spacer"></span>
+          <button id="btnReveal" class="small">Mostrar valores</button>
+          <button id="btnReset" class="small danger">Nueva sesión</button>
+        </div>
+        <div class="sessbox"><table id="sessTable"><tbody></tbody></table></div>
       </div>
-      <div class="sessbox"><table id="sessTable"><tbody></tbody></table></div>
-      <label>Expediente cifrado <small>(sesión + términos + tipos activos)</small></label>
-      <div class="row">
-        <input id="pwd" type="password" placeholder="Contraseña">
-        <button id="btnSave">Guardar…</button>
-        <button id="btnLoad">Cargar…</button>
+      <div class="card">
+        <div class="card-h"><label>Expediente cifrado <small>(sesión + términos + tipos activos)</small></label></div>
+        <div class="row">
+          <input id="pwd" type="password" placeholder="Contraseña">
+          <button id="btnSave">Guardar…</button>
+          <button id="btnLoad">Cargar…</button>
+        </div>
+        <div id="cfgMsg" class="muted"></div>
       </div>
-      <div id="cfgMsg" class="muted"></div>
-      <label>Nombres con modelo local <small>(opcional · sin internet al usarlo)</small></label>
-      <div class="row">
-        <label class="chk off"><input type="checkbox" id="chkNer" disabled> Detectar nombres con el modelo</label>
-        <button id="btnNer">Descargar modelo…</button>
-        <button id="btnNerDel" class="hidden">Borrar modelo</button>
+      <div class="card">
+        <div class="card-h"><label>Nombres con modelo local <small>(opcional · sin internet al usarlo)</small></label></div>
+        <div class="row">
+          <label class="chk off"><input type="checkbox" id="chkNer" disabled> Detectar nombres con el modelo</label>
+          <span class="spacer"></span>
+          <button id="btnNer">Descargar modelo…</button>
+          <button id="btnNerDel" class="hidden">Borrar modelo</button>
+        </div>
+        <div id="nerMsg" class="muted">Encuentra nombres sueltos («José Ramirez») que las reglas no ven. Se descarga una vez (~180 MB) y funciona en tu equipo, sin enviar nada.</div>
       </div>
-      <div id="nerMsg" class="muted">Encuentra nombres sueltos («José Ramirez») que las reglas no ven. Se descarga una vez (~180 MB) y funciona en tu equipo, sin enviar nada.</div>
     </div>
   </div>
 </section>
 </main>
+<div id="toast" class="toast hidden" role="status"></div>
 <div id="review" class="review hidden">
   <div class="rv-bar">
     <b id="rvTitle"></b>

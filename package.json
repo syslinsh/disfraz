@@ -1,7 +1,7 @@
 {
   "name": "disfraz",
   "productName": "Disfraz",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Anonimiza documentos en local antes de usar una IA y restaura los datos reales después",
   "main": "src/main/main.js",
   "author": "syslinsh <syslinsh@gmail.com>",
@@ -40,6 +40,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "src/renderer/icon.png",
       "target": [
         {
           "target": "nsis",
